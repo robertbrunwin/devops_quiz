@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# Collect the arguments from the switches passed
+while getopts ":w:c:u:" opt; do
+    case $opt in
+        w)
+            warning_level=$OPTARG
+            ;;
+        c) 	
+            critical_level=$OPTARG
+            ;;
+        u)
+            selected_user=$OPTARG
+            ;;
+        \?)
+            echo "Invalid: -$OPTARG" >&2
+            ;;
+    esac
+done
+
+# Get the number of all users currently logged on
+current_users_count=`who -u | awk '{print $1}' | wc -l`
+
+# If monitoring a single user, get the number of sessions
+# and do the checks
+if [ ! -z "$selected_user" ]; then
+    selected_user_count=`who -u | awk '{print $1}' | grep $selected_user | wc -l`
+    # this first case should handle the unknown state where no value comes back from selected_user_count
+    if  [ ! "$selected_user_count" ]; then
+        exit 3 
+    elif [ "$warning_level" -eq "$selected_user_count" ]; then
+        exit 1 
+    elif [ "$critical_level" -eq "$selected_user_count" ]; then
+        exit 2 
+    elif [ "$critical_level" -ne "$selected_user_count" ] && [ "$warning_level" -ne "$selected_user_count" ]; then
+        exit 0
+    fi
+fi
+
+# If no specific user is passed do the checks on all
+# The first case as in the previous block will catch the unknown state
+if [ ! "$current_users_count" ]; then
+    exit 3
+elif [ "$warning_level" -eq "$current_users_count" ]; then
+    exit 1
+elif [ "$critical_level" -eq "$current_users_count" ]; then
+    exit 2
+elif [ "$critical_level" -ne "$current_users_count" ] && [ "$warning_level" -ne "$current_users_count" ]; then
+    exit 0
+fi
